@@ -155,3 +155,18 @@ func TestQueueFullAndNoAlertAction(t *testing.T) {
 		t.Error("block-only rule queued an alert")
 	}
 }
+
+func TestAddedSinkAndSilentAlert(t *testing.T) {
+	d := New(nil, slog.New(slog.NewTextHandler(io.Discard, nil)), func(string) string { return "" })
+	d.Stdout = io.Discard
+	got := make(chan Alert, 1)
+	d.Add("audit", func(a Alert) error { got <- a; return nil })
+	ctx, cancel := context.WithCancel(context.Background())
+	d.Start(ctx)
+	d.Send(SilentAlert("s1", time.Date(2026, 10, 24, 1, 0, 0, 0, time.UTC)))
+	a := <-got
+	cancel()
+	if a.RuleID != "source.silent" || a.Subject != "s1" || !strings.Contains(a.TraceID, "s1") || a.Todo == "" {
+		t.Errorf("silent alert = %+v", a)
+	}
+}

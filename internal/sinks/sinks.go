@@ -148,6 +148,11 @@ func (d *Dispatcher) Start(ctx context.Context) {
 	}()
 }
 
+// Add registers another sink. Call it before Start.
+func (d *Dispatcher) Add(name string, send func(Alert) error) {
+	d.sinks = append(d.sinks, sink{name, send})
+}
+
 // Done is closed when the worker has stopped.
 func (d *Dispatcher) Done() <-chan struct{} { return d.done }
 

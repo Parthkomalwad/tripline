@@ -72,3 +72,17 @@ func (a Alert) Text() string {
 	}
 	return b.String()
 }
+
+// SilentAlert is the alert for a source that sent no heartbeat for 5 minutes.
+func SilentAlert(sourceID string, now time.Time) Alert {
+	return Alert{
+		TraceID:  "silent_" + sourceID + "_" + now.UTC().Format("20060102T150405Z"),
+		TS:       now.UTC(),
+		RuleID:   "source.silent",
+		Severity: "high",
+		Subject:  sourceID,
+		What:     "source " + sourceID + " sent no heartbeat for 5 minutes",
+		Done:     "nothing; tripline cannot see this source until it reports again",
+		Todo:     "check that the sensor or hook is running and can reach the watcher",
+	}
+}

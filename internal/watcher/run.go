@@ -12,8 +12,21 @@ import (
 
 	"github.com/Parthkomalwad/tripline/internal/audit"
 	"github.com/Parthkomalwad/tripline/internal/rules"
+	"github.com/Parthkomalwad/tripline/internal/sinks"
 	"github.com/Parthkomalwad/tripline/internal/tripwire"
 )
+
+func newServer(addr string, h http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           h,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    16 << 10,
+	}
+}
 
 // Run starts the watcher and blocks until ctx is cancelled.
 func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
@@ -52,11 +65,20 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	}
 	trap := &tripwire.Handler{Registry: reg, Ingest: w.Ingest, Log: log}
 
-	startSinks(ctx, w, cfg)
+	alerts := startSinks(ctx, w, cfg)
+	alerts.Add("audit", func(a sinks.Alert) error { return al.Append("alert", a) })
+
+	state := NewState()
+	if err := state.Load(cfg.Watcher.StateDir); err != nil {
+		return err
+	}
+	state.OnSilent = func(sourceID string) { alerts.Send(sinks.SilentAlert(sourceID, time.Now())) }
+	state.Attach(w)
+	go state.Loop(ctx, cfg.Watcher.StateDir, log)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/events", w.HandleEvents)
-	srvs := []*http.Server{newServer(cfg.Watcher.Listen, mux)}
+	srvs := []*http.Server{newServer(cfg.Watcher.Listen, mux), newServer(cfg.Watcher.StatusPage, state.StatusHandler())}
 	if cfg.Watcher.TrapListen == "" {
 		mux.Handle("/trap/", trap)
 	} else {
@@ -81,17 +103,4 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		}
 	}
 	return nil
-}
-
-// newServer builds an HTTP server with the watcher's timeouts.
-func newServer(addr string, h http.Handler) *http.Server {
-	return &http.Server{
-		Addr:              addr,
-		Handler:           h,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-		MaxHeaderBytes:    16 << 10,
-	}
 }
