@@ -34,6 +34,8 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		w.SetRules(rs)
 	}
 
+	startSinks(ctx, w, cfg)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/events", w.HandleEvents)
 	srv := &http.Server{
