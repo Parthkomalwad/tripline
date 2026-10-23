@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -158,6 +159,10 @@ func (s *State) Silent(now time.Time) []string {
 func (s *State) silentLocked(now time.Time) []string {
 	var out []string
 	for id, src := range s.sources {
+		// The watcher's own sources (traps) send no heartbeats.
+		if strings.HasPrefix(src.Source, "watcher.") {
+			continue
+		}
 		if now.Sub(src.liveness()) >= silentAfter {
 			out = append(out, id)
 		}

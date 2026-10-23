@@ -33,7 +33,7 @@ var safeAttrs = []string{"host", "path", "decoy_kind", "fingerprint"}
 func NewAlert(e *event.Event, r *rules.Rule) Alert {
 	what := fmt.Sprintf("Rule %s matched a %s event from %s", r.ID, e.Kind, e.Source)
 	if r.Description != "" {
-		what = r.Description + ". " + what
+		what = strings.TrimSuffix(r.Description, ".") + ". " + what
 	}
 	for _, k := range safeAttrs {
 		if v, ok := e.Attrs[k]; ok {

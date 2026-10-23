@@ -164,3 +164,13 @@ func TestHTMLEscapesSubject(t *testing.T) {
 		t.Fatal("missing gap or no-data text")
 	}
 }
+
+func TestWatcherSourcesNeverSilent(t *testing.T) {
+	s := NewState()
+	start := time.Date(2026, 10, 24, 0, 0, 0, 0, time.UTC)
+	s.Now = func() time.Time { return start }
+	s.observe(&event.Event{ID: "e", TS: start, Source: "watcher.trap", SourceID: "watcher-trap", Subject: "x", Kind: event.KindTripwireHit, Decision: event.DecisionNone}, nil)
+	if got := s.Silent(start.Add(time.Hour)); len(got) != 0 {
+		t.Errorf("silent = %v, want none", got)
+	}
+}
