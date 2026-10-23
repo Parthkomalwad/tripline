@@ -30,3 +30,7 @@ image: build-linux
 image-check: image
     test "$(docker image inspect -f '{{{{.Config.User}}' {{image}})" = "65532:65532"
     docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges {{image}} version
+
+# Run the attack replay lab (needs Docker). LEVEL 2 only for now.
+replay level="2" mode="monitor": build-linux
+    bash replays/litellm-2026-10/run.sh {{level}} {{mode}}
