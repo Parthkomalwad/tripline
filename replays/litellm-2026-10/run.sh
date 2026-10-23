@@ -77,6 +77,9 @@ for _ in $(seq 1 20); do
 done
 GOT_DECISION=$(printf '%s' "$LINE" | sed -n 's/.*"decision":"\([a-z]*\)".*/\1/p')
 GOT_RULE=$(printf '%s' "$LINE" | sed -n 's/.*"rule_id":"\([^"]*\)".*/\1/p')
+# In monitor mode the compiled-in floor rule can be the first match. In
+# enforce mode the profile rule blocks. Both are lookalike rules.
+case "$GOT_RULE" in floor-lookalike | egress-lookalike) GOT_RULE=lookalike ;; esac
 STATUS=$(victim curl -fsS http://watcher:7701/status.json || true)
 REJECTED=$(printf '%s' "$STATUS" | sed -n 's/.*"events_rejected":\([0-9]*\).*/\1/p')
 
@@ -95,7 +98,7 @@ row() { # name expected actual
 }
 printf '%-44s %-18s %-18s\n' CHECK EXPECTED ACTUAL
 row "audit: egress.connect litellm.dev decision" "$WANT_DECISION" "$GOT_DECISION"
-row "audit: deciding rule" egress-lookalike "$GOT_RULE"
+row "audit: deciding rule" lookalike "$GOT_RULE"
 row "watcher status.json events_rejected" 0 "$REJECTED"
 row "victim CONNECT result" "$WANT_CONNECT" "$CONNECT1"
 row "sink saw a connection" "$WANT_SINK" "$SINK1"
