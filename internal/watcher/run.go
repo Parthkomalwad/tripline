@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/Parthkomalwad/tripline/internal/audit"
 	"github.com/Parthkomalwad/tripline/internal/rules"
 )
 
@@ -22,6 +24,14 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		return err
 	}
 	w := &Watcher{Tokens: tokens, Log: log}
+	al, err := audit.Open(filepath.Join(cfg.Watcher.StateDir, "audit.jsonl"))
+	if err != nil {
+		return err
+	}
+	obs, rej, stopAudit := al.Async(log)
+	defer stopAudit()
+	w.Observe(obs)
+	w.ObserveRejects(rej)
 	if f := cfg.Watcher.RulesFile; f != "" {
 		data, err := os.ReadFile(f)
 		if err != nil {

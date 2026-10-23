@@ -30,6 +30,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "watcher":
 		return runWatcher(args[1:], stderr)
+	case "audit":
+		return runAudit(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "%s: unknown command %q\n", version.Name, args[0])
 		return 2
