@@ -16,7 +16,7 @@ export PATH="$PWD/bin:$PATH"
 tripline version
 ```
 
-The binary is static. Its only dependency is `gopkg.in/yaml.v3`.
+The binary is static. Its dependencies are `gopkg.in/yaml.v3` and `golang.org/x/net` (the `publicsuffix` package only).
 
 To build the container image instead, run `just image`. The image runs as user 65532 on a read-only root. A published image comes with the first release. Always deploy by digest. See `docs/operations.md`.
 
