@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Parthkomalwad/tripline/internal/selftest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,7 +33,9 @@ type Config struct {
 		LooseningDelay     time.Duration `yaml:"loosening_delay"`
 	} `yaml:"trust"`
 	Selftest struct {
-		Interval time.Duration `yaml:"interval"`
+		Interval  time.Duration     `yaml:"interval"`
+		Sensors   []selftest.Sensor `yaml:"sensors"`
+		AllowHost string            `yaml:"allow_host"`
 	} `yaml:"selftest"`
 	// Sensor is read by the egress sensor, not the watcher. It is listed so
 	// one config file can hold both.
@@ -66,6 +69,9 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if c.Selftest.Interval == 0 {
 		c.Selftest.Interval = time.Hour
+	}
+	if c.Selftest.AllowHost == "" {
+		c.Selftest.AllowHost = selftest.DefaultAllowHost
 	}
 	return c, nil
 }

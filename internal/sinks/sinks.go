@@ -119,6 +119,9 @@ func (d *Dispatcher) Send(a Alert) {
 // Observe is a watcher observer: it queues one alert per matched rule whose
 // on_match has "alert" or "page".
 func (d *Dispatcher) Observe(e *event.Event, matched []*rules.Rule) {
+	if e.Attrs["selftest"] == true { // self-test events never alert
+		return
+	}
 	for _, r := range matched {
 		if slices.Contains(r.OnMatch, "alert") || slices.Contains(r.OnMatch, "page") {
 			d.Send(NewAlert(e, r))
