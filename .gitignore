@@ -1,0 +1,6 @@
+/bin/
+*.sigstore.json
+.env
+.env.*
+*.key
+*.pem
