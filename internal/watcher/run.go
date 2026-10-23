@@ -12,6 +12,7 @@ import (
 
 	"github.com/Parthkomalwad/tripline/internal/audit"
 	"github.com/Parthkomalwad/tripline/internal/rules"
+	"github.com/Parthkomalwad/tripline/internal/tripwire"
 )
 
 // Run starts the watcher and blocks until ctx is cancelled.
@@ -44,20 +45,24 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		w.SetRules(rs)
 	}
 
+	reg, err := tripwire.LoadRegistry(cfg.Watcher.StateDir)
+	if err != nil {
+		return err
+	}
+	trap := &tripwire.Handler{Registry: reg, Ingest: w.Ingest, Log: log}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/events", w.HandleEvents)
-	srv := &http.Server{
-		Addr:              cfg.Watcher.Listen,
-		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-		MaxHeaderBytes:    16 << 10,
+	srvs := []*http.Server{newServer(cfg.Watcher.Listen, mux)}
+	if cfg.Watcher.TrapListen == "" {
+		mux.Handle("/trap/", trap)
+	} else {
+		srvs = append(srvs, newServer(cfg.Watcher.TrapListen, trap))
 	}
-	errc := make(chan error, 1)
-	go func() { errc <- srv.ListenAndServe() }()
-	log.Info("watcher listening", "addr", cfg.Watcher.Listen)
+	errc := make(chan error, len(srvs))
+	for _, srv := range srvs {
+		go func() { errc <- srv.ListenAndServe() }()
+		log.Info("watcher listening", "addr", srv.Addr)
+	}
 
 	select {
 	case err := <-errc:
@@ -66,8 +71,23 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	}
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(shutdown); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	for _, srv := range srvs {
+		if err := srv.Shutdown(shutdown); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
 	}
 	return nil
+}
+
+// newServer builds an HTTP server with the watcher's timeouts.
+func newServer(addr string, h http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           h,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    16 << 10,
+	}
 }
