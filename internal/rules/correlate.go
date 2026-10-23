@@ -243,3 +243,25 @@ func (c *Correlator) Load(r io.Reader) error {
 	}
 	return nil
 }
+
+// SetRules replaces the correlation rules, for example when a new bundle is
+// applied. Partial chains whose rule no longer exists are dropped.
+func (c *Correlator) SetRules(rs []*Rule) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.rules, c.byID = nil, map[string]*Rule{}
+	for _, r := range rs {
+		if r.Correlate != nil {
+			c.rules = append(c.rules, r)
+			c.byID[r.ID] = r
+		}
+	}
+	kept := c.parts[:0]
+	for _, p := range c.parts {
+		if c.byID[p.Rule] != nil {
+			kept = append(kept, p)
+		}
+	}
+	c.parts = kept
+	c.dirty = true
+}
