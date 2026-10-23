@@ -22,7 +22,7 @@ type statusDoc struct {
 	} `json:"sources"`
 	Coverage []struct {
 		SensorType string `json:"sensor_type"`
-		Active     bool   `json:"active"`
+		Active     int    `json:"active"`
 		Gap        bool   `json:"gap"`
 	} `json:"coverage"`
 	SelftestPassRate7d *float64 `json:"selftest_pass_rate_7d"`
@@ -103,7 +103,7 @@ func printStatus(w io.Writer, s *statusDoc) {
 	fmt.Fprintln(w, "\nCoverage:")
 	for _, c := range s.Coverage {
 		state := "watched"
-		if c.Gap || !c.Active {
+		if c.Gap || c.Active == 0 {
 			state = "NOT WATCHED"
 		}
 		fmt.Fprintf(w, "  %s: %s\n", c.SensorType, state)

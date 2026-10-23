@@ -68,7 +68,7 @@ func TestInit(t *testing.T) {
 const statusJSON = `{"bundle_version":3,
 "sources":[{"source_id":"a1","source":"claude-code","last_heartbeat":"2026-01-01T00:00:00Z","silent":true},
 {"source_id":"b2","source":"mcp","last_heartbeat":"2026-01-01T00:01:00Z","silent":false}],
-"coverage":[{"sensor_type":"file","active":true,"gap":false},{"sensor_type":"network","active":false,"gap":true}],
+"coverage":[{"sensor_type":"file","active":1,"gap":false},{"sensor_type":"network","active":0,"gap":true}],
 "selftest_pass_rate_7d":null,
 "recent_alerts":[{"ts":"t1","rule_id":"r1","severity":"high","trace_id":"trace-abc","subject":"sub1"}],
 "events_rejected":2}`
