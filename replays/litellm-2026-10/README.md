@@ -6,7 +6,25 @@ This lab recreates the shape of the attack. It uses decoy data and local contain
 
 A gateway container is compromised. The malicious code reads a credential file. It then sends data to `litellm.dev`, a lookalike of the real `litellm.ai`.
 
-Only Level 2 exists today. Levels 1 and 3 print "not yet".
+Levels 1 and 2 exist. Level 3 prints "not yet".
+
+### Level 1: decoy use
+
+No sensor takes part. Detection happens at the trap. The `MODE` argument is ignored.
+
+1. `tripline init` runs in a one-shot container. It plants a decoy `config.yaml` and `.env.backup` in a shared volume. The `api_base` in the decoy points at the watcher trap, `http://watcher:7702`.
+2. Stage 1, the stealer (`stealer.sh` in `victim-gateway`): reads the decoy config as its gateway config. It sends only the sha256 to `litellm.dev`. Nothing guards this path, so the sink sees the connection.
+3. Stage 2, the attacker (`attacker.sh` in a separate `attacker` container): gets a copy of the stolen file. It sends one fake chat completion request to the `api_base` in it. That is the trap. No real provider is used.
+
+| Check | Expected |
+|---|---|
+| Trap response | 401 |
+| Audit log | `tripwire.hit` with `selftest` false |
+| Audit log and watcher stdout | Alert for rule `tripwire-hit`, severity `critical`, `trace_id` equal to the hit event ID |
+| Alert text | Names the decoy fingerprint to rotate |
+| Audit log | No raw decoy token and no request body |
+
+### Level 2: lookalike destination
 
 | Mode | Expected result |
 |---|---|
@@ -32,6 +50,7 @@ The victim request ends in a TLS error, because the sink is plain TCP. This is e
 Docker with Compose v2 is required.
 
 ```
+just replay 1
 just replay 2 monitor
 just replay 2 enforce
 ```
@@ -44,7 +63,8 @@ The script prints an EXPECTED and ACTUAL table and exits non-zero on any mismatc
 
 - `compose.yaml`: the lab services and the internal network.
 - `config/tripline.yaml`: watcher and sensor config.
-- `victim.sh`: the decoy and the hash-only POST.
+- `victim.sh`: the Level 2 decoy and the hash-only POST.
+- `stealer.sh`, `attacker.sh`, `level1.sh`: the Level 1 stages and checks.
 - `run.sh`: starts the lab, checks the results, cleans up.
 
 The rules file is built at run time from `rules/profiles/lookalike.yaml` and `rules/profiles/gateway-strict.yaml`. The script sets the mode of every rule.
