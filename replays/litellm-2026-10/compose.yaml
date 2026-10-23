@@ -13,9 +13,26 @@ services:
     image: busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
     user: "0"
     cap_add: [CHOWN]
-    command: ["chown", "65532:65532", "/state"]
+    command: ["chown", "65532:65532", "/state", "/decoys"]
     volumes:
       - state:/state
+      - decoys:/decoys
+    networks: [lab]
+
+  # Level 1 only. Runs "tripline init": decoys go to the decoys volume, the
+  # registry and tokens go to the state volume. The rest of init's output
+  # (starter config, token) lands in a tmpfs and is dropped.
+  init:
+    profiles: [level1]
+    <<: *hardened
+    image: tripline:lab
+    user: "65532:65532"
+    command: ["init", "-dir", "/init", "-trap-url", "http://watcher:7702"]
+    volumes:
+      - state:/init/tripline-state
+      - decoys:/init/decoys
+    tmpfs:
+      - /init:mode=0755,uid=65532,gid=65532
     networks: [lab]
 
   watcher:
@@ -79,6 +96,21 @@ services:
       HTTPS_PROXY: http://sensor:8080
     volumes:
       - ./victim.sh:/lab/victim.sh:ro
+      - ./stealer.sh:/lab/stealer.sh:ro
+      - decoys:/gateway:ro
+    tmpfs:
+      - /work:mode=1777
+    networks: [lab]
+
+  # Level 1 only. Plays the attacker who holds the stolen decoy config.
+  attacker:
+    profiles: [level1]
+    <<: *hardened
+    image: curlimages/curl:8.11.1@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69
+    user: "65532:65532"
+    entrypoint: ["sleep", "3600"]
+    volumes:
+      - ./attacker.sh:/lab/attacker.sh:ro
     tmpfs:
       - /work:mode=1777
     networks: [lab]
@@ -89,3 +121,4 @@ networks:
 
 volumes:
   state: {}
+  decoys: {}

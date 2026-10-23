@@ -3,6 +3,7 @@
 watcher:
   listen: 0.0.0.0:7700
   status_page: 0.0.0.0:7701
+  trap_listen: 0.0.0.0:7702
   state_dir: /state
 
 sensor:

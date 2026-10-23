@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
-# Usage: run.sh LEVEL MODE   (LEVEL=2, MODE=monitor|enforce)
+# Usage: run.sh LEVEL [MODE]   (LEVEL=1, or LEVEL=2 with MODE=monitor|enforce)
 # Needs bin/tripline-linux-amd64 (just build-linux) and Docker Compose.
 set -euo pipefail
 
 LEVEL=${1:-2}
 MODE=${2:-monitor}
 case "$LEVEL" in
+  1) MODE=level1 ;; # MODE is ignored for level 1
   2) ;;
-  1 | 3) echo "level $LEVEL: not yet"; exit 2 ;;
-  *) echo "usage: run.sh LEVEL MODE" >&2; exit 2 ;;
+  3) echo "level $LEVEL: not yet"; exit 2 ;;
+  *) echo "usage: run.sh LEVEL [MODE]" >&2; exit 2 ;;
 esac
 case "$MODE" in
+  level1) [ "$LEVEL" = 1 ] || { echo "mode must be monitor or enforce" >&2; exit 2; } ;;
   monitor) WANT_DECISION=observe; WANT_CONNECT=200; WANT_SINK=yes ;;
   enforce) WANT_DECISION=deny; WANT_CONNECT=403; WANT_SINK=no ;;
   *) echo "mode must be monitor or enforce" >&2; exit 2 ;;
@@ -34,6 +36,8 @@ cleanup() {
   exit "$rc"
 }
 trap cleanup EXIT
+
+if [ "$LEVEL" = 1 ]; then . "$HERE/level1.sh"; exit 0; fi
 
 # Rules: lookalike first, so the lookalike rule is the one the event names.
 # The mode of every rule is replaced by MODE.

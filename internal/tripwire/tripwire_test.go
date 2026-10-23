@@ -68,7 +68,7 @@ func TestKnownToken(t *testing.T) {
 		t.Fatalf("events: %d", len(*got))
 	}
 	e := (*got)[0]
-	if e.Kind != event.KindTripwireHit || e.Attrs["token_fp"] != Fingerprint(d.Token) || e.Attrs["selftest"] != false {
+	if e.Kind != event.KindTripwireHit || e.Attrs["token_fp"] != Fingerprint(d.Token) || e.Attrs["fingerprint"] != Fingerprint(d.Token) || e.Attrs["selftest"] != false {
 		t.Fatalf("event %+v", e)
 	}
 	if len(e.Attrs["user_agent"].(string)) != 128 {

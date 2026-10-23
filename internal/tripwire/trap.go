@@ -65,7 +65,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Source: "watcher.trap", SourceID: sensor, Subject: subject(d.Location),
 		Kind: event.KindTripwireHit, Decision: event.DecisionNone,
 		Attrs: map[string]any{
-			"token_fp": Fingerprint(d.Token), "decoy_kind": d.Kind, "remote_ip": ip,
+			"token_fp": Fingerprint(d.Token), "fingerprint": Fingerprint(d.Token), "decoy_kind": d.Kind, "remote_ip": ip,
 			"method": r.Method, "path_len": len(r.URL.Path),
 			"user_agent": truncate(r.UserAgent(), maxAgentLen), "selftest": d.Selftest,
 		},
