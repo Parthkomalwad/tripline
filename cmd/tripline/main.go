@@ -30,6 +30,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "watcher":
 		return runWatcher(args[1:], stderr)
+	case "sensor":
+		return cmdSensor(args[1:], stdout, stderr)
+	case "init":
+		return cmdInit(args[1:], stdout, stderr)
+	case "status":
+		return cmdStatus(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "%s: unknown command %q\n", version.Name, args[0])
 		return 2
