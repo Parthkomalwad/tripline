@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Parthkomalwad/tripline/internal/tripwire"
 	"github.com/Parthkomalwad/tripline/internal/watcher"
 )
 
@@ -29,13 +30,14 @@ selftest:
   interval: 1h
 `
 
-const starterRules = "# Add tripline rules here. See docs/rules.md.\n"
+const starterRules = "# Add tripline rules here. See docs/rules.md.\n" + tripwire.DefaultRule
 
 // cmdInit handles "tripline init [-dir .]".
 func cmdInit(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("init", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	dir := fs.String("dir", ".", "directory to write tripline.yaml into")
+	trapURL := fs.String("trap-url", "http://127.0.0.1:7702", "base URL where attackers can reach the trap listener")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -64,9 +66,10 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	}
 	// Keep an existing rules file.
 	rulesPath := filepath.Join(*dir, "rules.yaml")
-	if rf, err := os.OpenFile(rulesPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644); err == nil {
-		io.WriteString(rf, starterRules)
-		rf.Close()
+	if _, err := os.Stat(rulesPath); errors.Is(err, os.ErrNotExist) {
+		if err := os.WriteFile(rulesPath, []byte(starterRules), 0o644); err != nil {
+			return fail(err)
+		}
 	}
 
 	stateDir := filepath.Join(*dir, "tripline-state")
@@ -82,12 +85,23 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return fail(err)
 	}
 
-	// TODO(tripwire): call tripwire.Generate here to write decoy files.
+	decoyDir := filepath.Join(*dir, "decoys")
+	if err := os.MkdirAll(decoyDir, 0o700); err != nil {
+		return fail(err)
+	}
+	decoys, err := tripwire.Generate(stateDir, *trapURL, decoyDir)
+	if err != nil {
+		return fail(err)
+	}
 
 	fmt.Fprintf(stdout, "Wrote %s and %s.\n", cfgPath, stateDir)
 	fmt.Fprintln(stdout, "Sensor token for \"default\". Store it securely. It is shown once:")
 	fmt.Fprintln(stdout, token)
+	for _, d := range decoys {
+		fmt.Fprintf(stdout, "Decoy %s: %s\n", d.Kind, d.Location)
+	}
 	fmt.Fprintln(stdout, "Next steps:")
+	fmt.Fprintln(stdout, "  0. Copy the decoys to where an attacker would look. Set -trap-url to an address they can reach.")
 	fmt.Fprintln(stdout, "  1. Add rules to rules.yaml.")
 	fmt.Fprintln(stdout, "  2. Start the watcher with this config.")
 	fmt.Fprintln(stdout, "  3. Run: tripline status -config", cfgPath)
