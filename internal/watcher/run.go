@@ -21,6 +21,7 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	StartDeadman(ctx, cfg, log)
 	w := &Watcher{Tokens: tokens, Log: log}
 	if f := cfg.Watcher.RulesFile; f != "" {
 		data, err := os.ReadFile(f)
