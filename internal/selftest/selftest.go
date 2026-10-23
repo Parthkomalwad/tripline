@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,6 +48,9 @@ type Runner struct {
 	Registry  *tripwire.Registry
 	Trap      http.Handler
 	Log       *slog.Logger
+	// StaleBundles lists sensors not on the watcher's bundle version. Nil
+	// skips the bundle-current probe (no signed bundles configured).
+	StaleBundles func() []string
 
 	// Tests may change these.
 	FirstDelay  time.Duration // default 10s
@@ -140,7 +144,8 @@ func (r *Runner) RunAll() {
 	}
 	res, why := r.trapAlive()
 	r.record("trap-alive", "", res, why)
-	r.record("bundle-current", "", Skip, "bundles arrive in M3") // ponytail: stub until M3
+	res, why = r.bundleCurrent()
+	r.record("bundle-current", "", res, why)
 }
 
 // record emits the selftest.result event and alerts on failure.
@@ -168,4 +173,15 @@ func (r *Runner) record(probe, sensorID, result, reason string) {
 		Done: "nothing; this check only reports",
 		Todo: "Check that the sensor and the trap are running and can reach the watcher. A failed check means a protection may be off.",
 	})
+}
+
+// bundleCurrent passes when every sensor reports the watcher's bundle.
+func (r *Runner) bundleCurrent() (string, string) {
+	if r.StaleBundles == nil {
+		return Skip, "no signed bundles configured"
+	}
+	if stale := r.StaleBundles(); len(stale) > 0 {
+		return Fail, "sensors behind the current bundle: " + strings.Join(stale, ", ")
+	}
+	return Pass, ""
 }

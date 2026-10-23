@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ type sourceInfo struct {
 	Source        string    `json:"source"`
 	LastHeartbeat time.Time `json:"last_heartbeat"`
 	LastEvent     time.Time `json:"last_event"`
+	BundleVersion int64     `json:"bundle_version"`
 	Events        int64     `json:"-"`
 }
 
@@ -119,6 +121,7 @@ func (s *State) observe(e *event.Event, matched []*rules.Rule) {
 	src.Events++
 	if e.Kind == event.KindHeartbeat {
 		src.LastHeartbeat = now
+		src.BundleVersion = e.BundleVersion
 		delete(s.notified, e.SourceID)
 		s.dirty = true
 	}
@@ -274,4 +277,22 @@ func (s *State) Loop(ctx context.Context, dir string, log *slog.Logger) {
 			}
 		}
 	}
+}
+
+// StaleBundles returns the sensors whose last heartbeat reported a bundle
+// version other than want. Watcher-internal sources are skipped.
+func (s *State) StaleBundles(want int64) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []string
+	for id, src := range s.sources {
+		if strings.HasPrefix(src.Source, "watcher.") || src.LastHeartbeat.IsZero() {
+			continue
+		}
+		if src.BundleVersion != want {
+			out = append(out, fmt.Sprintf("%s has v%d", id, src.BundleVersion))
+		}
+	}
+	sort.Strings(out)
+	return out
 }

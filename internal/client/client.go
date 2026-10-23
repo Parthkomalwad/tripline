@@ -37,6 +37,7 @@ type Config struct {
 	BufferMax      int64  // byte cap of the buffer file
 	FlushEvery     time.Duration
 	HeartbeatEvery time.Duration
+	BundleVersion  func() int64 // reported in heartbeats; nil means 0
 	HTTP           *http.Client
 	Log            *slog.Logger
 }
@@ -129,9 +130,13 @@ func (c *Client) Close() {
 }
 
 func (c *Client) heartbeat() event.Event {
-	return event.Event{ID: NewID(), TS: time.Now().UTC(), Source: c.cfg.Source,
+	e := event.Event{ID: NewID(), TS: time.Now().UTC(), Source: c.cfg.Source,
 		SourceID: c.cfg.SourceID, Subject: c.cfg.Subject,
 		Kind: event.KindHeartbeat, Decision: event.DecisionNone}
+	if c.cfg.BundleVersion != nil {
+		e.BundleVersion = c.cfg.BundleVersion()
+	}
+	return e
 }
 
 func (c *Client) loop() {

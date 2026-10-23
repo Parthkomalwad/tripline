@@ -75,6 +75,7 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	apply(floor.Rules(), 0)
 
 	mux := http.NewServeMux()
+	var staleBundles func() []string
 	switch {
 	case cfg.Trust.File != "":
 		trust, err := bundle.LoadTrust(cfg.Trust.File)
@@ -88,6 +89,7 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		}
 		go b.Run(ctx)
 		mux.HandleFunc("/v1/bundle", b.Handler(tokens))
+		staleBundles = func() []string { return state.StaleBundles(int64(b.Version())) }
 	case cfg.Watcher.RulesFile != "":
 		data, err := os.ReadFile(cfg.Watcher.RulesFile)
 		if err != nil {
@@ -106,7 +108,7 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	}
 
 	st := &selftest.Runner{Sensors: cfg.Selftest.Sensors, AllowHost: cfg.Selftest.AllowHost, Interval: cfg.Selftest.Interval,
-		Ingest: w.Ingest, Alert: alerts.Send, Registry: reg, Trap: trap, Log: log}
+		Ingest: w.Ingest, Alert: alerts.Send, Registry: reg, Trap: trap, Log: log, StaleBundles: staleBundles}
 	w.Observe(st.Observe)
 	st.Start(ctx)
 	go state.Loop(ctx, cfg.Watcher.StateDir, log)

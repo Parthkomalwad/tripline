@@ -15,7 +15,8 @@ type Config struct {
 	TokenEnv       string `yaml:"token_env"`
 	Listen         string `yaml:"listen"`
 	Profile        string `yaml:"profile"`
-	RulesFile      string `yaml:"rules_file"`
+	RulesFile      string `yaml:"rules_file"` // unsigned rules, when trust_file is empty
+	TrustFile      string `yaml:"trust_file"` // pull signed bundles from the watcher
 	StateDir       string `yaml:"state_dir"`
 	BufferMaxBytes int64  `yaml:"buffer_max_bytes"`
 	FailMode       string `yaml:"fail_mode"` // open (default) or closed
@@ -49,11 +50,14 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	for _, r := range []struct{ key, val string }{
 		{"id", c.ID}, {"watcher_url", c.WatcherURL}, {"token_env", c.TokenEnv},
-		{"profile", c.Profile}, {"rules_file", c.RulesFile}, {"state_dir", c.StateDir},
+		{"profile", c.Profile}, {"state_dir", c.StateDir},
 	} {
 		if r.val == "" {
 			return nil, errors.New("config: sensor." + r.key + " is required")
 		}
+	}
+	if c.RulesFile == "" && c.TrustFile == "" {
+		return nil, errors.New("config: set sensor.trust_file (signed bundles) or sensor.rules_file")
 	}
 	return c, nil
 }
