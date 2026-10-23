@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/Parthkomalwad/tripline/internal/audit"
+	"github.com/Parthkomalwad/tripline/internal/bundle"
+	"github.com/Parthkomalwad/tripline/internal/floor"
 	"github.com/Parthkomalwad/tripline/internal/rules"
 	"github.com/Parthkomalwad/tripline/internal/selftest"
 	"github.com/Parthkomalwad/tripline/internal/sinks"
@@ -48,21 +50,6 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	defer stopAudit()
 	w.Observe(obs)
 	w.ObserveRejects(rej)
-	if f := cfg.Watcher.RulesFile; f != "" {
-		data, err := os.ReadFile(f)
-		if err != nil {
-			return err
-		}
-		rs, err := rules.Parse(data)
-		if err != nil {
-			return fmt.Errorf("%s: %w", f, err)
-		}
-		w.SetRules(rs)
-	}
-
-	// TODO(M3): connect chains to alerts and audit.
-	StartCorrelation(ctx, w, cfg.Watcher.StateDir, log, func(c rules.Chain) { log.Warn("chain", "rule", c.RuleID, "trace", c.TraceID()) })
-
 	reg, err := tripwire.LoadRegistry(cfg.Watcher.StateDir)
 	if err != nil {
 		return err
@@ -78,13 +65,52 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	}
 	state.OnSilent = func(sourceID string) { alerts.Send(sinks.SilentAlert(sourceID, time.Now())) }
 	state.Attach(w)
+
+	corr := StartCorrelation(ctx, w, cfg.Watcher.StateDir, log, func(c rules.Chain) { alerts.Send(sinks.ChainAlert(c)) })
+	apply := func(rs []*rules.Rule, version int) {
+		w.SetRules(rs)
+		corr.SetRules(rs)
+		state.SetBundleVersion(int64(version))
+	}
+	apply(floor.Rules(), 0)
+
+	mux := http.NewServeMux()
+	switch {
+	case cfg.Trust.File != "":
+		trust, err := bundle.LoadTrust(cfg.Trust.File)
+		if err != nil {
+			return err
+		}
+		b := &Bundles{Trust: trust, File: cfg.Watcher.BundleFile, StateDir: cfg.Watcher.StateDir,
+			Apply: apply, Audit: al.Append, Alert: alerts.Send, Log: log, Now: time.Now}
+		if err := b.Load(); err != nil {
+			return err
+		}
+		go b.Run(ctx)
+		mux.HandleFunc("/v1/bundle", b.Handler(tokens))
+	case cfg.Watcher.RulesFile != "":
+		data, err := os.ReadFile(cfg.Watcher.RulesFile)
+		if err != nil {
+			return err
+		}
+		rs, err := rules.Parse(data)
+		if err != nil {
+			return fmt.Errorf("%s: %w", cfg.Watcher.RulesFile, err)
+		}
+		merged, err := floor.Merge(rs)
+		if err != nil {
+			return fmt.Errorf("%s: %w", cfg.Watcher.RulesFile, err)
+		}
+		log.Warn("using unsigned rules_file; set trust.file and bundle_file for signed bundles", "file", cfg.Watcher.RulesFile)
+		apply(merged, 0)
+	}
+
 	st := &selftest.Runner{Sensors: cfg.Selftest.Sensors, AllowHost: cfg.Selftest.AllowHost, Interval: cfg.Selftest.Interval,
 		Ingest: w.Ingest, Alert: alerts.Send, Registry: reg, Trap: trap, Log: log}
 	w.Observe(st.Observe)
 	st.Start(ctx)
 	go state.Loop(ctx, cfg.Watcher.StateDir, log)
 
-	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/events", w.HandleEvents)
 	srvs := []*http.Server{newServer(cfg.Watcher.Listen, mux), newServer(cfg.Watcher.StatusPage, state.StatusHandler())}
 	if cfg.Watcher.TrapListen == "" {

@@ -20,7 +20,8 @@ type Config struct {
 		StatusPage          string `yaml:"status_page"`
 		StateDir            string `yaml:"state_dir"`
 		HeartbeatPingURLEnv string `yaml:"heartbeat_ping_url_env"`
-		RulesFile           string `yaml:"rules_file"`
+		RulesFile           string `yaml:"rules_file"`  // unsigned rules, development only
+		BundleFile          string `yaml:"bundle_file"` // signed bundle, used when trust.file is set
 	} `yaml:"watcher"`
 	Sinks []struct {
 		Type          string `yaml:"type"`
