@@ -21,6 +21,7 @@ mkdir ~/tripline-demo
 tripline init -dir ~/tripline-demo
 cd ~/tripline-demo
 tripline watcher -config tripline.yaml &
+sleep 2   # let the watcher open its ports
 tripline status -config tripline.yaml
 ```
 
@@ -39,7 +40,7 @@ The container image comes from `just image`. A published image, referenced by di
 - [Threat model](docs/threat-model.md): what tripline does, and every limit.
 - [Rules](docs/rules.md): rule format, signed bundles, floor rules, incident packs.
 - [Operations](docs/operations.md): failure modes, break-glass, retention, key rotation.
-- [Replay lab](replays/litellm-2026-10/README.md): a harmless re-creation of the October 2026 LiteLLM attack. Level 2 only today.
+- [Replay lab](replays/litellm-2026-10/README.md): a harmless re-creation of the October 2026 LiteLLM attack. Levels 1 and 2 today.
 - [Build spec](aiwatch-build-spec.md) and [decisions](docs/adr/).
 - [Security policy](SECURITY.md) and [contributing](CONTRIBUTING.md).
 

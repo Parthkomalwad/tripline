@@ -85,6 +85,7 @@ Merge these keys into the sections above. Do not repeat a top-level key.
 
 ```sh
 tripline watcher -config tripline.yaml &
+sleep 2
 tripline status -config tripline.yaml
 ```
 
