@@ -101,6 +101,9 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 			}
 		}
 	}()
+	if err := startProviders(ctx, cfg, cl.Send, log); err != nil {
+		return err
+	}
 	go func() { <-ctx.Done(); _ = srv.Close() }()
 	log.Info("egress sensor listening", "addr", ln.Addr().String(), "profile", cfg.Profile, "fail_mode", cfg.FailMode)
 	if err := srv.Serve(ln); !errors.Is(err, http.ErrServerClosed) {
