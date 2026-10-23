@@ -36,16 +36,15 @@ match:
 `
 
 // lookalike is a placeholder for lookalike detection on protected domains.
-// TODO: replace "lookalike_hit: true" with the host_lookalike_of operator
-// when it lands in internal/rules. Until then the egress sensor must set the
-// lookalike_hit attribute.
+// The protected list is the floor minimum. Bundles can add domains in their
+// own rules but cannot remove these.
 const lookalike = `id: floor-lookalike
 description: A connection went to a lookalike of a protected domain.
 severity: critical
 on_match: [alert, page]
 match:
   kind: egress.connect
-  lookalike_hit: true
+  host_lookalike_of: [anthropic.com, openai.com, pypi.org, pythonhosted.org, npmjs.org, github.com, githubusercontent.com, litellm.ai, huggingface.co]
 `
 
 // Heartbeat requirement: every source must send a heartbeat at least every

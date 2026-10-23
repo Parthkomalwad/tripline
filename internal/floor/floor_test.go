@@ -78,3 +78,20 @@ func TestMergeAndCheck(t *testing.T) {
 		t.Fatalf("replace: %d rules, mode %s", len(m), m[0].Mode)
 	}
 }
+
+func TestFloorLookalikeMatches(t *testing.T) {
+	e := &event.Event{Kind: event.KindEgressConnect, Attrs: map[string]any{"host": "litellm.dev"}}
+	var ids []string
+	for _, r := range rules.Evaluate(Rules(), e) {
+		ids = append(ids, r.ID)
+	}
+	if !strings.Contains(strings.Join(ids, ","), "floor-lookalike") {
+		t.Errorf("litellm.dev matched %v, want floor-lookalike", ids)
+	}
+	e.Attrs["host"] = "api.anthropic.com"
+	for _, r := range rules.Evaluate(Rules(), e) {
+		if r.ID == "floor-lookalike" {
+			t.Error("api.anthropic.com matched floor-lookalike")
+		}
+	}
+}
