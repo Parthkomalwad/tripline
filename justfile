@@ -34,3 +34,8 @@ image-check: image
 # Run the attack replay lab (needs Docker). LEVEL 2 only for now.
 replay level="2" mode="monitor": build-linux
     bash replays/litellm-2026-10/run.sh {{level}} {{mode}}
+
+# Reproducible release build: linux/amd64, linux/arm64, darwin/arm64 plus SHA256SUMS.
+# Run `just build-release v1.2.3`. Output goes to dist/ (or the second argument).
+build-release v out="dist":
+    bash scripts/build-release.sh {{v}} {{out}}
