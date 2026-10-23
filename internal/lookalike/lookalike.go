@@ -2,6 +2,7 @@
 package lookalike
 
 import (
+	"golang.org/x/net/publicsuffix"
 	"net/netip"
 	"strings"
 
@@ -38,23 +39,15 @@ func IsIP(host string) bool {
 	return err == nil
 }
 
-// ponytail: no Public Suffix List. A name ending in a 2-letter TLD whose
-// second-to-last label is in this set counts as three labels (co.uk). Other
-// multi-label suffixes are misread; upgrade to x/net/publicsuffix if approved.
-var slds = map[string]bool{"co": true, "com": true, "net": true, "org": true, "gov": true, "edu": true, "ac": true, "or": true, "ne": true, "go": true}
-
-// registered returns the registered domain: the last two labels, or three
-// under a known 2-letter-TLD SLD.
+// registered returns the registered domain (eTLD+1) from the Public Suffix
+// List, including private suffixes such as github.io. A host that is itself a
+// public suffix is returned unchanged.
 func registered(host string) string {
-	l := strings.Split(host, ".")
-	n := 2
-	if len(l) >= 3 && len(l[len(l)-1]) == 2 && slds[l[len(l)-2]] {
-		n = 3
-	}
-	if len(l) <= n {
+	reg, err := publicsuffix.EffectiveTLDPlusOne(host)
+	if err != nil {
 		return host
 	}
-	return strings.Join(l[len(l)-n:], ".")
+	return reg
 }
 
 // split returns the brand label and the TLD of a registered domain.
