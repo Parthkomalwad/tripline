@@ -57,6 +57,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := p.decide(host, port)
+	if host == SelftestHost { // reserved probe target: report at once, never dial
+		p.selftest(w, host, port, v)
+		return
+	}
 	p.report(host, port, v)
 	if v.decision == event.DecisionDeny {
 		http.Error(w, "blocked by tripline", http.StatusForbidden)
