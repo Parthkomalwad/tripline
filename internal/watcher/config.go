@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Parthkomalwad/tripline/internal/selftest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,7 +20,8 @@ type Config struct {
 		StatusPage          string `yaml:"status_page"`
 		StateDir            string `yaml:"state_dir"`
 		HeartbeatPingURLEnv string `yaml:"heartbeat_ping_url_env"`
-		RulesFile           string `yaml:"rules_file"`
+		RulesFile           string `yaml:"rules_file"`  // unsigned rules, development only
+		BundleFile          string `yaml:"bundle_file"` // signed bundle, used when trust.file is set
 	} `yaml:"watcher"`
 	Sinks []struct {
 		Type          string `yaml:"type"`
@@ -32,8 +34,13 @@ type Config struct {
 		LooseningDelay     time.Duration `yaml:"loosening_delay"`
 	} `yaml:"trust"`
 	Selftest struct {
-		Interval time.Duration `yaml:"interval"`
+		Interval  time.Duration     `yaml:"interval"`
+		Sensors   []selftest.Sensor `yaml:"sensors"`
+		AllowHost string            `yaml:"allow_host"`
 	} `yaml:"selftest"`
+	// Sensor is read by the egress sensor, not the watcher. It is listed so
+	// one config file can hold both.
+	Sensor yaml.Node `yaml:"sensor"`
 	Digest struct {
 		Weekly string `yaml:"weekly"`
 	} `yaml:"digest"`
@@ -63,6 +70,9 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if c.Selftest.Interval == 0 {
 		c.Selftest.Interval = time.Hour
+	}
+	if c.Selftest.AllowHost == "" {
+		c.Selftest.AllowHost = selftest.DefaultAllowHost
 	}
 	return c, nil
 }

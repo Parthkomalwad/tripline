@@ -11,8 +11,11 @@ import (
 
 // cmdSensor handles "tripline sensor add -config c.yaml <sensor-id>".
 func cmdSensor(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "egress" {
+		return runEgress(args[1:], stderr)
+	}
 	if len(args) == 0 || args[0] != "add" {
-		fmt.Fprintln(stderr, "usage: tripline sensor add -config c.yaml <sensor-id>")
+		fmt.Fprintln(stderr, "usage: tripline sensor add -config c.yaml <sensor-id>\n       tripline sensor egress -config c.yaml")
 		return 2
 	}
 	fs := flag.NewFlagSet("sensor add", flag.ContinueOnError)

@@ -1,0 +1,91 @@
+# Harmless replay lab. The only network is internal: no route to the internet.
+# run.sh sets LAB_RULES_DIR and SENSOR_TOKEN. Do not start this file by hand.
+
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
+services:
+  # One-shot root helper: gives the state volume to the tripline user.
+  prep:
+    <<: *hardened
+    image: busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+    user: "0"
+    cap_add: [CHOWN]
+    command: ["chown", "65532:65532", "/state"]
+    volumes:
+      - state:/state
+    networks: [lab]
+
+  watcher:
+    <<: *hardened
+    image: tripline:lab
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    user: "65532:65532"
+    command: ["watcher", "-config", "/etc/tripline/tripline.yaml"]
+    depends_on:
+      prep:
+        condition: service_completed_successfully
+    volumes:
+      - ./config/tripline.yaml:/etc/tripline/tripline.yaml:ro
+      - state:/state
+    networks: [lab]
+
+  sensor:
+    <<: *hardened
+    image: tripline:lab
+    user: "65532:65532"
+    command: ["sensor", "egress", "-config", "/etc/tripline/tripline.yaml"]
+    environment:
+      TRIPLINE_SENSOR_TOKEN: ${SENSOR_TOKEN:-}
+    depends_on:
+      - watcher
+    volumes:
+      - ./config/tripline.yaml:/etc/tripline/tripline.yaml:ro
+      - ${LAB_RULES_DIR:-/nonexistent}:/rules:ro
+    tmpfs:
+      - /sensor-state:mode=0700,uid=65532,gid=65532
+    networks: [lab]
+
+  # Plain TCP listener on 443. It logs one line per connection and reads
+  # one byte. It never speaks TLS and never answers.
+  sink:
+    <<: *hardened
+    image: busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+    user: "65532:65532"
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=0
+    command:
+      - tcpsvd
+      - "0.0.0.0"
+      - "443"
+      - sh
+      - -c
+      - "echo 'sink: connection accepted' >&2; head -c 1 >/dev/null"
+    networks:
+      lab:
+        aliases: [litellm.dev]
+
+  # Plays the compromised gateway. run.sh starts victim.sh inside it.
+  victim-gateway:
+    <<: *hardened
+    image: curlimages/curl:8.11.1@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69
+    user: "65532:65532"
+    entrypoint: ["sleep", "3600"]
+    environment:
+      HTTPS_PROXY: http://sensor:8080
+    volumes:
+      - ./victim.sh:/lab/victim.sh:ro
+    tmpfs:
+      - /work:mode=1777
+    networks: [lab]
+
+networks:
+  lab:
+    internal: true
+
+volumes:
+  state: {}

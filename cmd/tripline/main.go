@@ -36,6 +36,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdSensor(args[1:], stdout, stderr)
 	case "init":
 		return cmdInit(args[1:], stdout, stderr)
+	case "rules":
+		return cmdRules(args[1:], stdout, stderr)
 	case "status":
 		return cmdStatus(args[1:], stdout, stderr)
 	default:

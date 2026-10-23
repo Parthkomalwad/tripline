@@ -63,6 +63,18 @@ func (r *Registry) Lookup(token string) (Decoy, bool) {
 	return Decoy{}, false
 }
 
+// Selftest returns the decoy that the trap-alive probe uses.
+func (r *Registry) Selftest() (Decoy, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	for _, d := range r.decoys {
+		if d.Selftest && d.Kind == "selftest" {
+			return d, true
+		}
+	}
+	return Decoy{}, false
+}
+
 // Add creates a decoy with a fresh token and saves the registry.
 func (r *Registry) Add(kind, location string, selftest bool) (Decoy, error) {
 	d := Decoy{Token: tokenPrefix + randString(16), Kind: kind, Location: location, CreatedAt: time.Now().UTC(), Selftest: selftest}

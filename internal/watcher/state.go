@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -33,6 +34,7 @@ type sourceInfo struct {
 	Source        string    `json:"source"`
 	LastHeartbeat time.Time `json:"last_heartbeat"`
 	LastEvent     time.Time `json:"last_event"`
+	BundleVersion int64     `json:"bundle_version"`
 	Events        int64     `json:"-"`
 }
 
@@ -76,6 +78,10 @@ type State struct {
 	recent   []Alert // newest first
 	rejected int64
 	bundle   int64
+
+	selftestRuns map[runKey]int64
+	history      []selftestRun // last 7 days, oldest first
+	historyDirty bool
 }
 
 // NewState returns an empty state that uses the wall clock.
@@ -115,10 +121,14 @@ func (s *State) observe(e *event.Event, matched []*rules.Rule) {
 	src.Events++
 	if e.Kind == event.KindHeartbeat {
 		src.LastHeartbeat = now
+		src.BundleVersion = e.BundleVersion
 		delete(s.notified, e.SourceID)
 		s.dirty = true
 	}
 	s.events[eventKey{string(e.Kind), string(e.Decision), e.Source}]++
+	if e.Kind == event.KindSelftestResult {
+		s.recordSelftest(e, now)
+	}
 	for _, r := range matched {
 		s.matches[matchKey{r.ID, string(r.Mode)}]++
 		if !hasAlertAction(r) {
@@ -194,6 +204,9 @@ const heartbeatsFile = "heartbeats.json"
 
 // Load reads dir/heartbeats.json. A missing file is not an error.
 func (s *State) Load(dir string) error {
+	if err := s.loadSelftest(dir); err != nil {
+		return err
+	}
 	data, err := os.ReadFile(filepath.Join(dir, heartbeatsFile))
 	if os.IsNotExist(err) {
 		return nil
@@ -217,6 +230,9 @@ func (s *State) Load(dir string) error {
 
 // Save writes dir/heartbeats.json if the sources changed since the last save.
 func (s *State) Save(dir string) error {
+	if err := s.saveSelftest(dir); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	if !s.dirty {
 		s.mu.Unlock()
@@ -261,4 +277,22 @@ func (s *State) Loop(ctx context.Context, dir string, log *slog.Logger) {
 			}
 		}
 	}
+}
+
+// StaleBundles returns the sensors whose last heartbeat reported a bundle
+// version other than want. Watcher-internal sources are skipped.
+func (s *State) StaleBundles(want int64) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []string
+	for id, src := range s.sources {
+		if strings.HasPrefix(src.Source, "watcher.") || src.LastHeartbeat.IsZero() {
+			continue
+		}
+		if src.BundleVersion != want {
+			out = append(out, fmt.Sprintf("%s has v%d", id, src.BundleVersion))
+		}
+	}
+	sort.Strings(out)
+	return out
 }

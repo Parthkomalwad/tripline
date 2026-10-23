@@ -1,5 +1,5 @@
 // Package rules parses rules and evaluates them against single events.
-// Correlation rules come in M3.
+// Correlation rules live in correlate.go.
 package rules
 
 import (
@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/Parthkomalwad/tripline/internal/event"
+	"github.com/Parthkomalwad/tripline/internal/lookalike"
 )
 
 // Mode says whether a rule only records (monitor) or also blocks (enforce).
@@ -42,6 +43,7 @@ type Rule struct {
 	Floor       bool              `yaml:"floor"`
 	OnMatch     []string          `yaml:"on_match"`
 	Runbook     string            `yaml:"runbook"`
+	Correlate   *Correlate        `yaml:"correlate"`
 
 	conds []cond
 }
@@ -53,13 +55,14 @@ const (
 	opIn
 	opNotIn
 	opGlob
+	opLookalike
 )
 
 // Suffixes are checked in this order, so "_not_in" wins over "_in".
 var suffixes = []struct {
 	s  string
 	op op
-}{{"_not_in", opNotIn}, {"_in", opIn}, {"_glob", opGlob}}
+}{{"_not_in", opNotIn}, {"_in", opIn}, {"_glob", opGlob}, {"_lookalike_of", opLookalike}}
 
 type cond struct {
 	field  string
@@ -115,11 +118,25 @@ func (r *Rule) compile() error {
 			return fmt.Errorf("on_match: unknown action %q", a)
 		}
 	}
+	if r.Correlate != nil {
+		if len(r.Match) > 0 {
+			return errors.New("correlate: cannot be combined with match")
+		}
+		return r.Correlate.compile()
+	}
 	if len(r.Match) == 0 {
 		return errors.New("match: required")
 	}
-	r.conds = r.conds[:0]
-	for key, raw := range r.Match {
+	var err error
+	r.conds, err = compileConds(r.Match)
+	return err
+}
+
+// compileConds turns a match map into conditions. Single rules and
+// correlation steps share it.
+func compileConds(match map[string]any) ([]cond, error) {
+	var conds []cond
+	for key, raw := range match {
 		c := cond{field: key, op: opEq}
 		for _, s := range suffixes {
 			if f, ok := strings.CutSuffix(key, s.s); ok {
@@ -128,21 +145,21 @@ func (r *Rule) compile() error {
 			}
 		}
 		_, isList := raw.([]any)
-		vals, err := strs(raw, c.op == opIn || c.op == opNotIn || (c.op == opGlob && isList))
+		vals, err := strs(raw, c.op == opIn || c.op == opNotIn || c.op == opLookalike || (c.op == opGlob && isList))
 		if err != nil {
-			return fmt.Errorf("match.%s: %w", key, err)
+			return nil, fmt.Errorf("match.%s: %w", key, err)
 		}
 		if c.op == opGlob {
 			for _, v := range vals {
 				if _, err := path.Match(v, ""); err != nil {
-					return fmt.Errorf("match.%s: bad pattern %q", key, v)
+					return nil, fmt.Errorf("match.%s: bad pattern %q", key, v)
 				}
 			}
 		}
 		c.values = vals
-		r.conds = append(r.conds, c)
+		conds = append(conds, c)
 	}
-	return nil
+	return conds, nil
 }
 
 func strs(raw any, list bool) ([]string, error) {
@@ -174,6 +191,9 @@ func strs(raw any, list bool) ([]string, error) {
 // does not have never matches, so "host_not_in" does not fire on events
 // without a host.
 func (r *Rule) Matches(e *event.Event) bool {
+	if r.Correlate != nil {
+		return false // chains match through a Correlator, never a single event
+	}
 	for k, want := range r.AppliesTo {
 		if got, ok := field(e, k); !ok || got != norm(k, want) {
 			return false
@@ -195,6 +215,8 @@ func (r *Rule) Matches(e *event.Event) bool {
 			}
 		case opGlob:
 			hit = slices.ContainsFunc(c.values, func(v string) bool { m, _ := path.Match(v, got); return m })
+		case opLookalike:
+			_, hit = lookalike.Check(got, c.values)
 		}
 		if !hit {
 			return false

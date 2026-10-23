@@ -27,6 +27,9 @@ func TestLoadConfig(t *testing.T) {
 	if _, err := LoadConfig(write("watcher:\n  listen: x\n")); err == nil || !strings.Contains(err.Error(), "state_dir") {
 		t.Errorf("missing state_dir: %v", err)
 	}
+	if _, err := LoadConfig(write("watcher:\n  state_dir: x\nsensor:\n  id: s1\n")); err != nil {
+		t.Errorf("sensor section rejected: %v", err)
+	}
 	if _, err := LoadConfig(write("watcher:\n  state_dir: x\n  slack_url: https://x\n")); err == nil {
 		t.Error("unknown key accepted")
 	}
