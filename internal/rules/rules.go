@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/Parthkomalwad/tripline/internal/event"
+	"github.com/Parthkomalwad/tripline/internal/lookalike"
 )
 
 // Mode says whether a rule only records (monitor) or also blocks (enforce).
@@ -53,13 +54,14 @@ const (
 	opIn
 	opNotIn
 	opGlob
+	opLookalike
 )
 
 // Suffixes are checked in this order, so "_not_in" wins over "_in".
 var suffixes = []struct {
 	s  string
 	op op
-}{{"_not_in", opNotIn}, {"_in", opIn}, {"_glob", opGlob}}
+}{{"_not_in", opNotIn}, {"_in", opIn}, {"_glob", opGlob}, {"_lookalike_of", opLookalike}}
 
 type cond struct {
 	field  string
@@ -128,7 +130,7 @@ func (r *Rule) compile() error {
 			}
 		}
 		_, isList := raw.([]any)
-		vals, err := strs(raw, c.op == opIn || c.op == opNotIn || (c.op == opGlob && isList))
+		vals, err := strs(raw, c.op == opIn || c.op == opNotIn || c.op == opLookalike || (c.op == opGlob && isList))
 		if err != nil {
 			return fmt.Errorf("match.%s: %w", key, err)
 		}
@@ -195,6 +197,8 @@ func (r *Rule) Matches(e *event.Event) bool {
 			}
 		case opGlob:
 			hit = slices.ContainsFunc(c.values, func(v string) bool { m, _ := path.Match(v, got); return m })
+		case opLookalike:
+			_, hit = lookalike.Check(got, c.values)
 		}
 		if !hit {
 			return false

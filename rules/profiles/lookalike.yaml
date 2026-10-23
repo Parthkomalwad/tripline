@@ -1,0 +1,17 @@
+id: egress-lookalike
+description: Connection to a domain that imitates a protected provider or registry domain.
+match:
+  kind: egress.connect
+  host_lookalike_of:
+    - anthropic.com
+    - openai.com
+    - pypi.org
+    - pythonhosted.org
+    - npmjs.org
+    - github.com
+    - githubusercontent.com
+    - litellm.ai
+    - huggingface.co
+severity: critical
+mode: monitor
+on_match: [alert, block, page]
