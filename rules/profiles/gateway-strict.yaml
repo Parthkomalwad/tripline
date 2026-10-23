@@ -1,0 +1,12 @@
+id: egress-allowlist
+description: AI gateway may only reach approved provider endpoints.
+applies_to: { source: sensor.egress, profile: gateway-strict }
+match:
+  kind: egress.connect
+  host_not_in: ["api.anthropic.com", "api.openai.com"]
+severity: high
+mode: monitor        # change to enforce to return 403 for other hosts
+floor: false
+on_match:
+  - alert
+  - block            # only effective when mode is enforce
