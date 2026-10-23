@@ -59,6 +59,9 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		w.SetRules(rs)
 	}
 
+	// TODO(M3): connect chains to alerts and audit.
+	StartCorrelation(ctx, w, cfg.Watcher.StateDir, log, func(c rules.Chain) { log.Warn("chain", "rule", c.RuleID, "trace", c.TraceID()) })
+
 	reg, err := tripwire.LoadRegistry(cfg.Watcher.StateDir)
 	if err != nil {
 		return err
