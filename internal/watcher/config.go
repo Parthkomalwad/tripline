@@ -34,6 +34,9 @@ type Config struct {
 	Selftest struct {
 		Interval time.Duration `yaml:"interval"`
 	} `yaml:"selftest"`
+	// Sensor is read by the egress sensor, not the watcher. It is listed so
+	// one config file can hold both.
+	Sensor yaml.Node `yaml:"sensor"`
 	Digest struct {
 		Weekly string `yaml:"weekly"`
 	} `yaml:"digest"`
