@@ -16,10 +16,10 @@ tripline assumes that something gets in. It does not try to stop the first step.
 
 | Attacker | What tripline does | What tripline does not do |
 |---|---|---|
-| Malicious package inside the AI gateway (the LiteLLM 1.107.0 pattern: startup-hook stealer, exfiltration to a lookalike domain) | Detects use of a decoy (built). Detects, and optionally blocks, unknown or lookalike destinations through the egress sensor (built). Detects credential-file reads (planned, Level 3). Injects real provider keys at the sensor so the gateway holds none (planned, provider mode). | Prevent the package from running. |
+| Malicious package inside the AI gateway (the LiteLLM 1.107.0 pattern: startup-hook stealer, exfiltration to a lookalike domain) | Detects use of a decoy (built). Detects, and optionally blocks, unknown or lookalike destinations through the egress sensor (built). Detects credential-file reads (planned, Level 3). Injects real provider keys at the sensor so the gateway holds none (built, provider mode). | Prevent the package from running. |
 | Prompt-injected agent | Denies dangerous tool calls and agent-config edits with hooks (planned, Level 3). The outbound profile limits where an agent can connect. | Judge the meaning of prompts. |
 | Stolen API key used from attacker infrastructure | Flags unusual key use from provider and cloud logs (planned, key-usage connectors). | Detect it in real time. Provider logs arrive late. |
-| Exfiltration through allowed services (an attacker key sent to a real AI provider, a push to an attacker repository) | Rejects requests that carry a key or organization ID other than the one the sensor injects (planned, provider mode). | Inspect traffic in CONNECT mode beyond the host name. |
+| Exfiltration through allowed services (an attacker key sent to a real AI provider, a push to an attacker repository) | Rejects requests that carry a key or organization ID other than the one the sensor injects (built, provider mode, Anthropic and OpenAI; see ADR 0004). | Inspect traffic in CONNECT mode beyond the host name. |
 | Root on a monitored host | Keeps off-host signals working: decoy use at the trap, a missing heartbeat, and the dead man's switch. Key usage is planned. | Prevent local sensors from being killed or edited. |
 | Tampering with tripline rules | Signed bundles, rollback protection, delayed and announced loosening, floor rules compiled into the binary (all built). Self-tests (built for the egress sensor and the trap). | Survive theft of enough signing keys. |
 | Compromise of a tripline maintainer account | Planned release controls: two-person release approval, keyless signing tied to CI identity, reproducible builds. Today CI signs a test artifact only. | Stop a fully colluding set of maintainers. |
@@ -38,7 +38,7 @@ tripline assumes that something gets in. It does not try to stop the first step.
 | Heartbeats, silent-source alerts, dead man's switch ping | Built |
 | Node sensor, credential-file read events | Planned (Falco, M6) |
 | Hooks for Claude Code and Cursor | Planned (M7) |
-| Provider mode and tenant pinning | Planned (M5) |
+| Provider mode and tenant pinning (Anthropic, OpenAI) | Built |
 | Key-usage connectors and weekly digest | Planned (M8) |
 | Canarytokens webhook endpoint | Planned |
 
