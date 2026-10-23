@@ -12,6 +12,7 @@ import (
 
 	"github.com/Parthkomalwad/tripline/internal/audit"
 	"github.com/Parthkomalwad/tripline/internal/rules"
+	"github.com/Parthkomalwad/tripline/internal/selftest"
 	"github.com/Parthkomalwad/tripline/internal/sinks"
 	"github.com/Parthkomalwad/tripline/internal/tripwire"
 )
@@ -77,6 +78,10 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	}
 	state.OnSilent = func(sourceID string) { alerts.Send(sinks.SilentAlert(sourceID, time.Now())) }
 	state.Attach(w)
+	st := &selftest.Runner{Sensors: cfg.Selftest.Sensors, AllowHost: cfg.Selftest.AllowHost, Interval: cfg.Selftest.Interval,
+		Ingest: w.Ingest, Alert: alerts.Send, Registry: reg, Trap: trap, Log: log}
+	w.Observe(st.Observe)
+	st.Start(ctx)
 	go state.Loop(ctx, cfg.Watcher.StateDir, log)
 
 	mux := http.NewServeMux()

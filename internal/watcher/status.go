@@ -49,6 +49,8 @@ func (s *State) Status() StatusDoc {
 		Coverage:       []coverageView{},
 		RecentAlerts:   append([]Alert{}, s.recent...),
 		EventsRejected: s.rejected,
+
+		SelftestPassRate7d: s.passRateLocked(now),
 	}
 	active := map[string]int{}
 	for id, src := range s.sources {
@@ -151,8 +153,8 @@ func (s *State) WriteMetrics(w io.Writer) {
 		fmt.Fprintf(w, "tripline_rule_matches_total{rule_id=\"%s\",mode=\"%s\"} %d\n",
 			escLabel.Replace(k.rule), escLabel.Replace(k.mode), s.matches[k])
 	}
-	// No samples until self-tests exist (M2).
 	header(w, "tripline_selftest_runs_total", "Self-test probe runs by probe and result.", "counter")
+	s.writeSelftestMetrics(w)
 
 	header(w, "tripline_source_last_heartbeat_seconds", "Unix time of the last heartbeat per source.", "gauge")
 	ids := make([]string, 0, len(s.sources))
