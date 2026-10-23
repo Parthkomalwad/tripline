@@ -50,6 +50,9 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		return err
 	}
 	trap := &tripwire.Handler{Registry: reg, Ingest: w.Ingest, Log: log}
+
+	startSinks(ctx, w, cfg)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/events", w.HandleEvents)
 	srvs := []*http.Server{newServer(cfg.Watcher.Listen, mux)}
