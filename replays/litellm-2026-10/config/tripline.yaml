@@ -1,0 +1,15 @@
+# Lab config. Read by the watcher and by the egress sensor.
+# The sensor token comes from the environment, never from this file.
+watcher:
+  listen: 0.0.0.0:7700
+  status_page: 0.0.0.0:7701
+  state_dir: /state
+
+sensor:
+  id: lab-egress
+  watcher_url: http://watcher:7700
+  token_env: TRIPLINE_SENSOR_TOKEN
+  listen: 0.0.0.0:8080
+  profile: gateway-strict
+  rules_file: /rules/rules.yaml
+  state_dir: /sensor-state
