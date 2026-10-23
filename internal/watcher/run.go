@@ -12,6 +12,18 @@ import (
 	"github.com/Parthkomalwad/tripline/internal/rules"
 )
 
+func newServer(addr string, h http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           h,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    16 << 10,
+	}
+}
+
 // Run starts the watcher and blocks until ctx is cancelled.
 func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 	if err := os.MkdirAll(cfg.Watcher.StateDir, 0o700); err != nil {
@@ -34,19 +46,21 @@ func Run(ctx context.Context, cfg *Config, log *slog.Logger) error {
 		w.SetRules(rs)
 	}
 
+	state := NewState()
+	if err := state.Load(cfg.Watcher.StateDir); err != nil {
+		return err
+	}
+	state.Attach(w)
+	go state.Loop(ctx, cfg.Watcher.StateDir, log)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/events", w.HandleEvents)
-	srv := &http.Server{
-		Addr:              cfg.Watcher.Listen,
-		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-		MaxHeaderBytes:    16 << 10,
-	}
-	errc := make(chan error, 1)
+	srv := newServer(cfg.Watcher.Listen, mux)
+	statusSrv := newServer(cfg.Watcher.StatusPage, state.StatusHandler())
+	defer statusSrv.Close()
+	errc := make(chan error, 2)
 	go func() { errc <- srv.ListenAndServe() }()
+	go func() { errc <- statusSrv.ListenAndServe() }()
 	log.Info("watcher listening", "addr", cfg.Watcher.Listen)
 
 	select {
