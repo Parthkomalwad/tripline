@@ -1,0 +1,11 @@
+# Registered domains that lookalike detection protects.
+domains:
+  - anthropic.com
+  - openai.com
+  - pypi.org
+  - pythonhosted.org
+  - npmjs.org
+  - github.com
+  - githubusercontent.com
+  - litellm.ai
+  - huggingface.co
