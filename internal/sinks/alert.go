@@ -86,3 +86,32 @@ func SilentAlert(sourceID string, now time.Time) Alert {
 		Todo:     "check that the sensor or hook is running and can reach the watcher",
 	}
 }
+
+// ChainAlert is the alert for a completed correlation chain.
+func ChainAlert(c rules.Chain) Alert {
+	what := fmt.Sprintf("Rule %s linked %d events on %s within its window: %s", c.RuleID, len(c.EventIDs), c.Key, strings.Join(c.EventIDs, ", "))
+	var page bool
+	var runbook string
+	if c.Rule != nil {
+		if c.Rule.Description != "" {
+			what = strings.TrimSuffix(c.Rule.Description, ".") + ". " + what
+		}
+		page, runbook = slices.Contains(c.Rule.OnMatch, "page"), c.Rule.Runbook
+	}
+	return Alert{
+		TraceID: c.TraceID(), TS: c.End, RuleID: c.RuleID, Severity: string(c.Severity),
+		Page: page, Subject: c.Key, What: what,
+		Done:    "nothing beyond what each sensor decided for the single events",
+		Todo:    fmt.Sprintf("Treat %s as compromised. Review trace %s in the audit log and rotate the credentials it can reach.", c.Key, c.TraceID()),
+		Runbook: runbook,
+	}
+}
+
+// BundleAlert is the alert for a rule bundle decision that a human must see.
+func BundleAlert(severity, what, done, todo string, version int, now time.Time) Alert {
+	return Alert{
+		TraceID: fmt.Sprintf("bundle_v%d_%s", version, now.UTC().Format("20060102T150405Z")),
+		TS:      now.UTC(), RuleID: "bundle", Severity: severity, Page: severity == "critical",
+		Subject: "rule-bundle", What: what, Done: done, Todo: todo,
+	}
+}
