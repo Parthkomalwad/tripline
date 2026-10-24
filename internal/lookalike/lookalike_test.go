@@ -64,10 +64,19 @@ func TestRegistered(t *testing.T) {
 		"a.b.example.com": "example.com", "example.com": "example.com", "com": "com",
 		"x.example.co.uk": "example.co.uk", "foo.co.uk": "foo.co.uk", "github.co": "github.co",
 		"a.huggingface.co": "huggingface.co", "x.y.com.au": "y.com.au",
+		// Private suffixes from the Public Suffix List.
+		"evil.github.io": "evil.github.io", "a.b.pages.dev": "b.pages.dev",
+		"x.example.org.za": "example.org.za",
 	} {
 		if got := registered(in); got != want {
 			t.Errorf("registered(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestHostedSubdomainIsNotBrandLookalike(t *testing.T) {
+	if r, hit := Check("evil.github.io", []string{"github.com"}); hit {
+		t.Errorf("evil.github.io flagged as %+v; github.io is a public suffix", r)
 	}
 }
 
