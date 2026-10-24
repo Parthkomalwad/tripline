@@ -84,7 +84,7 @@ func (s *State) StatusHandler() http.Handler {
 	return mux
 }
 
-var page = template.Must(template.New("status").Parse(`<!doctype html>
+var page = template.Must(template.New("status").Funcs(template.FuncMap{"mulf": func(a *float64, b float64) float64 { return *a * b }}).Parse(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>tripline status</title>
 <style>
@@ -105,7 +105,7 @@ th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid #ccc}
 {{else}}<tr><td colspan="4">No sources yet.</td></tr>
 {{end}}</table>
 <h2>Self-test pass rate (7 days)</h2>
-<p>{{if .SelftestPassRate7d}}{{.SelftestPassRate7d}}{{else}}no data{{end}}</p>
+<p>{{with .SelftestPassRate7d}}{{printf "%.0f%%" (mulf $.SelftestPassRate7d 100)}}{{else}}no data{{end}}</p>
 <h2>Recent alerts</h2>
 <table><tr><th>Time</th><th>Rule</th><th>Severity</th><th>Trace ID</th><th>Subject</th></tr>
 {{range .RecentAlerts}}<tr><td>{{.TS.Format "2006-01-02 15:04:05 MST"}}</td><td>{{.RuleID}}</td><td>{{.Severity}}</td><td>{{.TraceID}}</td><td>{{.Subject}}</td></tr>
