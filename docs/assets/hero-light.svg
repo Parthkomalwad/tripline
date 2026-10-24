@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="400" viewBox="0 0 900 400" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+<rect width="900" height="400" rx="18" fill="#FAF9F5"/>
+<text x="48" y="54" font-size="13" fill="#6B6862">the attacker is already in. three steps left:</text>
+
+<text x="48" y="100" font-size="15" fill="#1F1E1D">1  touch secrets</text>
+<text x="330" y="100" font-size="15" fill="#1F1E1D">2  send them out</text>
+<text x="612" y="100" font-size="15" fill="#1F1E1D">3  use the keys</text>
+
+<rect x="48" y="118" width="252" height="64" rx="8" fill="#ECEAE3" stroke="#DAD7CE"/>
+<text x="64" y="144" font-size="12" fill="#6B6862">read</text>
+<text x="64" y="166" font-size="13" fill="#1F1E1D">~/.aws/credentials</text>
+<rect x="330" y="118" width="252" height="64" rx="8" fill="#ECEAE3" stroke="#DAD7CE"/>
+<text x="346" y="144" font-size="12" fill="#6B6862">CONNECT</text>
+<text x="346" y="166" font-size="13" fill="#1F1E1D">litellm.dev:443</text>
+<rect x="612" y="118" width="252" height="64" rx="8" fill="#ECEAE3" stroke="#DAD7CE"/>
+<text x="628" y="144" font-size="12" fill="#6B6862">POST stolen config</text>
+<text x="628" y="166" font-size="13" fill="#1F1E1D">/trap/tltrap_…/v1</text>
+
+<path d="M174 196 v26 M456 196 v26 M738 196 v26" stroke="#C4623F" stroke-width="2"/>
+<path d="M168 216 l6 8 l6 -8 M450 216 l6 8 l6 -8 M732 216 l6 8 l6 -8" stroke="#C4623F" stroke-width="2" fill="none"/>
+
+<rect x="48" y="234" width="252" height="76" rx="8" fill="none" stroke="#C4623F" stroke-dasharray="5 4"/>
+<text x="64" y="260" font-size="12" fill="#C4623F">secret.read</text>
+<text x="64" y="282" font-size="13" fill="#1F1E1D">floor-credential-read</text>
+<text x="64" y="300" font-size="11" fill="#6B6862">level 3 · planned (Falco)</text>
+<rect x="330" y="234" width="252" height="76" rx="8" fill="none" stroke="#C4623F"/>
+<text x="346" y="260" font-size="12" fill="#C4623F">egress.connect · deny</text>
+<text x="346" y="282" font-size="13" fill="#1F1E1D">403 lookalike of litellm.ai</text>
+<text x="346" y="300" font-size="11" fill="#6B6862">level 2 · egress sensor</text>
+<rect x="612" y="234" width="252" height="76" rx="8" fill="none" stroke="#C4623F"/>
+<text x="628" y="260" font-size="12" fill="#C4623F">tripwire.hit · critical</text>
+<text x="628" y="282" font-size="13" fill="#1F1E1D">rotate key tlfa…3c9e</text>
+<text x="628" y="300" font-size="11" fill="#6B6862">level 1 · decoy and trap</text>
+
+<line x1="48" y1="338" x2="864" y2="338" stroke="#DAD7CE"/>
+<text x="48" y="366" font-size="12" fill="#6B6862">every signal → hash-chained audit log · signed rule bundles · hourly self-tests</text>
+</svg>
