@@ -160,7 +160,7 @@ func TestHTMLEscapesSubject(t *testing.T) {
 	if strings.Contains(body, "<script>") || !strings.Contains(body, "&lt;script&gt;") {
 		t.Fatal("subject not escaped")
 	}
-	if !strings.Contains(body, "NOT WATCHED") || !strings.Contains(body, "no data") {
+	if !strings.Contains(body, "Not watched") || !strings.Contains(body, "No self-test has run yet") {
 		t.Fatal("missing gap or no-data text")
 	}
 }
@@ -175,13 +175,21 @@ func TestWatcherSourcesNeverSilent(t *testing.T) {
 	}
 }
 
-func TestStatusPageShowsPassRatePercent(t *testing.T) {
-	rate := 0.75
+func TestStatusPageShowsPassRateAndFinding(t *testing.T) {
+	s := NewState()
+	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	s.Now = func() time.Time { return now }
+	for i, r := range []string{"pass", "pass", "pass", "fail"} {
+		s.history = append(s.history, selftestRun{now.Add(time.Duration(i-4) * time.Hour), "egress-deny", r})
+	}
 	var buf strings.Builder
-	if err := page.Execute(&buf, StatusDoc{SelftestPassRate7d: &rate}); err != nil {
+	if err := page.Execute(&buf, s.view()); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "<p>75%</p>") {
-		t.Errorf("page does not show 75%%")
+	body := buf.String()
+	for _, want := range []string{"75%", "The egress-deny self-test failed", "Attack path", "Not watched"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page missing %q", want)
+		}
 	}
 }

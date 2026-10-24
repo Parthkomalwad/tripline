@@ -58,7 +58,7 @@ tripline status -config tripline.yaml
 The status page runs on `127.0.0.1:7701`:
 
 <div align="center">
-<img src="docs/assets/status-page.png" alt="The tripline status page: coverage per sensor type with unwatched types marked NOT WATCHED, sources with their last heartbeat, a 100 percent self-test pass rate, and two critical alerts: a floor-lookalike connection and a tripwire-hit on /srv/litellm/config.yaml, each with a trace ID." width="760">
+<img src="docs/assets/status-page.png" alt="The tripline status page. The finding line reads: 2 critical alerts in the last 24 hours. A summary strip shows critical alerts, self-test pass rate, sensors reporting, rule bundle and rejected events. The attack path shows alerts and sensor coverage for each step: touch secrets (not watched), send them out (1 alert), use the keys (1 alert). Below are recent alerts with trace IDs, a 7-day self-test chart with the latest result per probe, and the sources list." width="900">
 </div>
 
 ## How it works

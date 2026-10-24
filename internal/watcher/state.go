@@ -54,6 +54,7 @@ type Alert struct {
 	Severity string    `json:"severity"`
 	TraceID  string    `json:"trace_id"`
 	Subject  string    `json:"subject"`
+	Kind     string    `json:"kind,omitempty"`
 }
 
 type eventKey struct{ kind, decision, source string }
@@ -135,7 +136,7 @@ func (s *State) observe(e *event.Event, matched []*rules.Rule) {
 			continue
 		}
 		s.alerts[alertKey{string(r.Severity), r.ID}]++
-		a := Alert{TS: e.TS, RuleID: r.ID, Severity: string(r.Severity), TraceID: e.ID, Subject: e.Subject}
+		a := Alert{TS: e.TS, RuleID: r.ID, Severity: string(r.Severity), TraceID: e.ID, Subject: e.Subject, Kind: string(e.Kind)}
 		s.recent = append([]Alert{a}, s.recent...)
 		if len(s.recent) > maxRecent {
 			s.recent = s.recent[:maxRecent]
