@@ -174,3 +174,14 @@ func TestWatcherSourcesNeverSilent(t *testing.T) {
 		t.Errorf("silent = %v, want none", got)
 	}
 }
+
+func TestStatusPageShowsPassRatePercent(t *testing.T) {
+	rate := 0.75
+	var buf strings.Builder
+	if err := page.Execute(&buf, StatusDoc{SelftestPassRate7d: &rate}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "<p>75%</p>") {
+		t.Errorf("page does not show 75%%")
+	}
+}
