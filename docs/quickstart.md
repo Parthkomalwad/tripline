@@ -312,6 +312,45 @@ Use `tripline rules diff old.yaml new.yaml` to see which changes loosen. Details
 
 With Docker and Compose v2, run `just replay 2 monitor` and `just replay 2 enforce`. This is a harmless lab. See `replays/litellm-2026-10/README.md`.
 
+### 8. Provider mode: a gateway with no keys
+
+Provider mode lets your AI gateway (for example LiteLLM) run with no provider keys. The sensor holds the keys and adds them. See `docs/adr/0004-provider-mode.md`.
+
+Add `providers` to the `sensor:` section. Each key comes from a file or an environment variable that only the sensor can read.
+
+```yaml
+sensor:
+  # ... the keys from step 3, then:
+  provider_listen: 127.0.0.1:8081   # default
+  providers:
+    anthropic:
+      key_file: /run/secrets/anthropic_key
+    openai:
+      key_env: OPENAI_API_KEY
+      organization: org-...   # optional
+      project: proj_...       # optional
+```
+
+Restart the sensor. Point the gateway at the sensor and give it no key.
+
+- Anthropic base URL: `http://sensor:8081/anthropic`
+- OpenAI base URL: `http://sensor:8081/openai/v1`
+
+The sensor forwards to `https://api.anthropic.com` and `https://api.openai.com` and sets the `Authorization` header. The gateway must not send `Authorization`, `x-api-key`, `OpenAI-Organization`, `OpenAI-Project` or `anthropic-workspace-id`, and no key in the query string. Keep `anthropic-version`.
+
+A request with any of these gets HTTP 403, in monitor mode too. The event is `egress.provider_request` with `decision: deny` and `reason: foreign credential`. It holds a fingerprint of the key, never the key. The floor rule `floor-foreign-credential` raises a critical alert and a page.
+
+Test it. The first call must succeed. The second must return 403.
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8081/openai/v1/models
+curl -sS -o /dev/null -w '%{http_code}\n' -H 'Authorization: Bearer sk-test' http://127.0.0.1:8081/openai/v1/models
+```
+
+Events carry the provider, model, status, latency and token counts. Token counts come from non-streaming JSON responses only. Streams have none. Prompts and responses are never stored.
+
+Also block direct egress to the provider hosts from the gateway at the network level. Otherwise a stolen key can bypass the sensor.
+
 ## Level 3: node sensor and hooks (planned)
 
 Level 3 is not built. The plan:

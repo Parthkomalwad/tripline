@@ -47,11 +47,22 @@ match:
   host_lookalike_of: [anthropic.com, openai.com, pypi.org, pythonhosted.org, npmjs.org, github.com, githubusercontent.com, litellm.ai, huggingface.co]
 `
 
+// foreignCredential flags a provider-mode request that carried its own key or
+// organization. The sensor always rejects these.
+const foreignCredential = `id: floor-foreign-credential
+description: A request to the provider listener carried a foreign credential.
+severity: critical
+on_match: [alert, page]
+match:
+  kind: egress.provider_request
+  reason: foreign credential
+`
+
 // Heartbeat requirement: every source must send a heartbeat at least every
 // 60 seconds. The watcher enforces it with source.silent alerts. It is not a
 // rule, so a bundle cannot express or remove it.
 
-var floorRules = mustParse(tripwire.DefaultRule + "---\n" + credentialRead + "---\n" + lookalike)
+var floorRules = mustParse(tripwire.DefaultRule + "---\n" + credentialRead + "---\n" + lookalike + "---\n" + foreignCredential)
 
 func mustParse(src string) []*rules.Rule {
 	rs, err := rules.Parse([]byte(src))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Parthkomalwad/tripline/internal/sensor/egress/provider"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,6 +21,9 @@ type Config struct {
 	StateDir       string `yaml:"state_dir"`
 	BufferMaxBytes int64  `yaml:"buffer_max_bytes"`
 	FailMode       string `yaml:"fail_mode"` // open (default) or closed
+
+	ProviderListen string             `yaml:"provider_listen"` // default 127.0.0.1:8081
+	Providers      provider.Providers `yaml:"providers"`       // provider mode, off when empty
 }
 
 // LoadConfig reads only the "sensor:" key. Other keys belong to the watcher,
@@ -41,6 +45,9 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if c.BufferMaxBytes == 0 {
 		c.BufferMaxBytes = 50 << 20
+	}
+	if c.ProviderListen == "" {
+		c.ProviderListen = "127.0.0.1:8081"
 	}
 	if c.FailMode == "" {
 		c.FailMode = "open"
