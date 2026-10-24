@@ -15,7 +15,8 @@ import (
 )
 
 func ev(id string) event.Event {
-	return event.Event{ID: id, TS: time.Now().UTC(), Source: "sensor.egress", SourceID: "s1",
+	// Second precision keeps every event the same length, so byte caps are exact.
+	return event.Event{ID: id, TS: time.Now().UTC().Truncate(time.Second), Source: "sensor.egress", SourceID: "s1",
 		Subject: "s1", Kind: event.KindEgressConnect, Decision: event.DecisionAllow}
 }
 
