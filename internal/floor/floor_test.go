@@ -25,7 +25,7 @@ func TestFloorRulesLoad(t *testing.T) {
 		}
 		ids = append(ids, r.ID)
 	}
-	if got := strings.Join(ids, ","); got != "tripwire-hit,floor-credential-read,floor-lookalike" {
+	if got := strings.Join(ids, ","); got != "tripwire-hit,floor-credential-read,floor-lookalike,floor-foreign-credential" {
 		t.Fatalf("ids = %s", got)
 	}
 }
